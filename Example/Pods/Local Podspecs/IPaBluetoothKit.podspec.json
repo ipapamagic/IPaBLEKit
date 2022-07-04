@@ -1,0 +1,22 @@
+{
+  "name": "IPaBluetoothKit",
+  "version": "0.1.0",
+  "summary": "A short description of IPaBluetoothKit.",
+  "description": "TODO: Add long description of the pod here.",
+  "homepage": "https://github.com/IPaPa/IPaBluetoothKit",
+  "license": {
+    "type": "MIT",
+    "file": "LICENSE"
+  },
+  "authors": {
+    "IPaPa": "ipapamagic@gmail.com"
+  },
+  "source": {
+    "git": "https://github.com/IPaPa/IPaBluetoothKit.git",
+    "tag": "0.1.0"
+  },
+  "platforms": {
+    "ios": "9.0"
+  },
+  "source_files": "IPaBluetoothKit/Classes/**/*"
+}

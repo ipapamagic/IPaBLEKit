@@ -1,0 +1,16 @@
+PODS:
+  - IPaBluetoothKit (0.1.0)
+
+DEPENDENCIES:
+  - IPaBluetoothKit (from `../`)
+
+EXTERNAL SOURCES:
+  IPaBluetoothKit:
+    :path: "../"
+
+SPEC CHECKSUMS:
+  IPaBluetoothKit: ec7ed4c089646cd9029abda4cbe7d6be22097fb0
+
+PODFILE CHECKSUM: 3c953f4c4c3296c44ecfa5d3f1a814853593cd73
+
+COCOAPODS: 1.11.3
