@@ -11,8 +11,14 @@ import IPaLog
 import Combine
 open class IPaPeripheral: NSObject {
     public class Service:NSObject {
+        @objc class public func keyPathsForValuesAffectingConnected() -> Set<String> {
+            return ["_cbService"]
+        }
         public private(set) var uuid:CBUUID
-        weak var _cbService:CBService?
+        @objc dynamic public var connected:Bool {
+            return _cbService != nil
+        }
+        @objc dynamic weak var _cbService:CBService?
         public private(set) weak var cbService:CBService? {
             get {
                 return _cbService
@@ -38,6 +44,12 @@ open class IPaPeripheral: NSObject {
             self.uuid = cbService.uuid
             self._cbService = cbService
             super.init()
+        }
+        func disconnect() {
+            for characteristic in self.characteristics.values {
+                characteristic.disconnect()
+            }
+            self._cbService = nil
         }
     }
     public class Characteristic:NSObject {
@@ -84,19 +96,18 @@ open class IPaPeripheral: NSObject {
             }
             peripheral.writeValue(data, for: cbCharacteristic, type: type)
         }
-    }
-    override class open func keyPathsForValuesAffectingValue(forKey key: String) -> Set<String> {
-        switch key {
-        case "rssi":
-            return ["_rssi"]
-        case "state":
-            return ["_peripheral","_peripheral.state"]
-        case "peripheral":
-            return ["_peripheral"]
-        default:
-            return super.keyPathsForValuesAffectingValue(forKey: key)
+        func disconnect() {
+            self._cbCharacteristic = nil
         }
-        
+    }
+    @objc class open func keyPathsForValuesAffectingRssi() -> Set<String> {
+        return ["_rssi"]
+    }
+    @objc class open func keyPathsForValuesAffectingState() -> Set<String> {
+        return ["_peripheral","_peripheral.state"]
+    }
+    @objc class open func keyPathsForValuesAffectingPeripheral() -> Set<String> {
+        return ["_peripheral"]
     }
     var characteristicsAnyCancellable = [AnyCancellable]()
     @objc dynamic var _peripheral:CBPeripheral? {
@@ -163,6 +174,9 @@ open class IPaPeripheral: NSObject {
     public func disconnect() {
         guard let peripheral = peripheral else {
             return
+        }
+        for service in self.services {
+            service.disconnect()
         }
         self.manager.centralManager.cancelPeripheralConnection(peripheral)
     }

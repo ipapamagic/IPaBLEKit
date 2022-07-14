@@ -10,7 +10,7 @@ import CoreBluetooth
 import IPaLog
 import Combine
 public protocol IPaBluetoothManagerDelegate {
-    func createPeripheral(from manager: IPaBluetoothManager, with peripheral: CBPeripheral, advertisementData: [String : Any], rssi RSSI: NSNumber) -> IPaPeripheral
+    func createPeripheral(from manager: IPaBluetoothManager, with peripheral: CBPeripheral, advertisementData: [String : Any], rssi RSSI: NSNumber) -> IPaPeripheral?
     func manager(_ manager: IPaBluetoothManager, didDiscover peripheral:IPaPeripheral)
     func manager(_ manager: IPaBluetoothManager, didConnect peripheral:IPaPeripheral)
 }
@@ -58,8 +58,7 @@ extension IPaBluetoothManager:CBCentralManagerDelegate {
             ipaPeripheral._rssi = RSSI
             IPaLog("Peripheral discovered updated:\(peripheral.name ?? peripheral.description)")
         }
-        else {
-            let ipaPeripheral = self.delegate.createPeripheral(from: self, with: peripheral, advertisementData: advertisementData, rssi: RSSI)
+        else if let ipaPeripheral = self.delegate.createPeripheral(from: self, with: peripheral, advertisementData: advertisementData, rssi: RSSI) {
             ipaPeripheral._peripheral = peripheral
             ipaPeripheral.manager = self
             ipaPeripheral._rssi = RSSI
@@ -68,11 +67,6 @@ extension IPaBluetoothManager:CBCentralManagerDelegate {
             
             self.delegate.manager(self, didDiscover: ipaPeripheral)
         }
-        
-        
-        
-        
-        
     }
     public func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
         IPaLog("Peripheral connected:\(peripheral.name ?? peripheral.description)")
@@ -86,5 +80,7 @@ extension IPaBluetoothManager:CBCentralManagerDelegate {
     public func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
         IPaLog("Peripheral fail to connect:\(peripheral.name ?? peripheral.description)")
     }
+    public func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
     
+    }
 }
