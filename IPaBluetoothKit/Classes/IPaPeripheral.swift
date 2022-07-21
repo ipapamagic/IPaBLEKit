@@ -119,6 +119,7 @@ open class IPaPeripheral: NSObject {
             self.didSet(peripheral: _peripheral)
         }
     }
+    lazy var lastDiscoverTime = Date().timeIntervalSince1970
     var _rssi:NSNumber = NSNumber(value: 0)
     @objc dynamic  public var peripheral:CBPeripheral? {
         return _peripheral

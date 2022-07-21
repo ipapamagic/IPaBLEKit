@@ -13,10 +13,23 @@ public protocol IPaBluetoothManagerDelegate {
     func createPeripheral(from manager: IPaBluetoothManager, with peripheral: CBPeripheral, advertisementData: [String : Any], rssi RSSI: NSNumber) -> IPaPeripheral?
     func manager(_ manager: IPaBluetoothManager, didDiscover peripheral:IPaPeripheral)
     func manager(_ manager: IPaBluetoothManager, didConnect peripheral:IPaPeripheral)
+    func manager(_ manager: IPaBluetoothManager, didFailToConnect peripheral:IPaPeripheral, error: Error?)
+    func manager(_ manager: IPaBluetoothManager, didDisconnectPeripheral peripheral:IPaPeripheral, error: Error?)
 }
 public class IPaBluetoothManager: NSObject {
     lazy var centralManager = CBCentralManager(delegate: self, queue: .main)
     public var cbStateSubject = PassthroughSubject<CBManagerState,Never>()
+    var scanTimer:Timer?
+    var scanOptions:[String : Any]?
+    public var rescanTime:TimeInterval = 10 {
+        didSet {
+            guard let _ = scanTimer else {
+                return
+            }
+            self.startScan(self.scanOptions)
+        }
+    }
+    public var peripheralTimeoutInterval:TimeInterval = 10
     @objc dynamic public private(set) var peripherals = [IPaPeripheral]()
     var services:[CBUUID]?
     public var cbState:CBManagerState {
@@ -34,9 +47,43 @@ public class IPaBluetoothManager: NSObject {
     }
     public func startScan(_ options:[String:Any]? = nil) {
         peripherals.removeAll()
-        self.centralManager.scanForPeripherals(withServices: self.services, options:options)
+        self.scanTimer?.invalidate()
+        self.scanOptions = options
+        self.centralManager.scanForPeripherals(withServices: self.services, options:self.scanOptions)
+        self.scanTimer = Timer.scheduledTimer(withTimeInterval: self.rescanTime, repeats: true, block: {
+            timer in
+            self.centralManager.stopScan()
+            //remove timeout peripherals
+            let now = Date().timeIntervalSince1970
+            self.peripherals = self.peripherals.filter { peripheral in
+                guard  peripheral.state == .disconnected else {
+                    peripheral.lastDiscoverTime = now
+                    return true
+                }
+                let isTimeout = (now - peripheral.lastDiscoverTime)  >   self.peripheralTimeoutInterval
+                if isTimeout {
+                    peripheral._peripheral = nil
+                }
+                return !isTimeout
+            }
+            
+            self.centralManager.scanForPeripherals(withServices: self.services, options:self.scanOptions)
+        })
+        
+        
+    }
+    public func remove(_ peripheral:IPaPeripheral) {
+        if let index = self.peripherals.firstIndex(of: peripheral) {
+            if peripheral.state == .connected {
+                peripheral.disconnect()
+            }
+            self.peripherals.remove(at: index)
+            peripheral._peripheral = nil
+        }
     }
     public func stopScan() {
+        self.scanTimer?.invalidate()
+        self.scanTimer = nil
         self.centralManager.stopScan()
     }
     
@@ -50,13 +97,12 @@ extension IPaBluetoothManager:CBCentralManagerDelegate {
         guard let name = peripheral.name,name.count > 0 else {
             return
         }
-        
-        
         if let ipaPeripheral = self.peripherals.first(where: { _peripheral in
             _peripheral.peripheral == peripheral
         }) {
-            ipaPeripheral._rssi = RSSI
             IPaLog("Peripheral discovered updated:\(peripheral.name ?? peripheral.description)")
+            ipaPeripheral._rssi = RSSI
+            ipaPeripheral.lastDiscoverTime = Date().timeIntervalSince1970
         }
         else if let ipaPeripheral = self.delegate.createPeripheral(from: self, with: peripheral, advertisementData: advertisementData, rssi: RSSI) {
             ipaPeripheral._peripheral = peripheral
@@ -64,7 +110,7 @@ extension IPaBluetoothManager:CBCentralManagerDelegate {
             ipaPeripheral._rssi = RSSI
             self.peripherals.append(ipaPeripheral)
             IPaLog("Peripheral Discovered:\(peripheral.name ?? peripheral.description)")
-            
+            ipaPeripheral.lastDiscoverTime = Date().timeIntervalSince1970
             self.delegate.manager(self, didDiscover: ipaPeripheral)
         }
     }
@@ -78,9 +124,20 @@ extension IPaBluetoothManager:CBCentralManagerDelegate {
         }
     }
     public func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
-        IPaLog("Peripheral fail to connect:\(peripheral.name ?? peripheral.description)")
+        IPaLog("Peripheral fail to connect:\(peripheral.name ?? peripheral.description),error:\(error?.localizedDescription ?? "nil")")
+        if let ipaPeripheral = self.peripherals.first(where: { ipaPeripheral in
+            return ipaPeripheral.peripheral == peripheral
+        }) {
+            self.delegate.manager(self, didFailToConnect: ipaPeripheral,error:error)
+            
+        }
     }
     public func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
-    
+        IPaLog("Peripheral disconnect:\(peripheral.name ?? peripheral.description),error:\(error?.localizedDescription ?? "nil")")
+        if let ipaPeripheral = self.peripherals.first(where: { ipaPeripheral in
+            return ipaPeripheral.peripheral == peripheral
+        }) {
+            self.delegate.manager(self, didDisconnectPeripheral: ipaPeripheral,error:error)
+        }
     }
 }
