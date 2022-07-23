@@ -10,96 +10,6 @@ import CoreBluetooth
 import IPaLog
 import Combine
 open class IPaPeripheral: NSObject {
-    public class Service:NSObject {
-        @objc class public func keyPathsForValuesAffectingConnected() -> Set<String> {
-            return ["_cbService"]
-        }
-        public private(set) var uuid:CBUUID
-        @objc dynamic public var connected:Bool {
-            return _cbService != nil
-        }
-        @objc dynamic weak var _cbService:CBService?
-        public private(set) weak var cbService:CBService? {
-            get {
-                return _cbService
-            }
-            set {
-                self._cbService = newValue
-            }
-        }
-        lazy var characteristics = [CBUUID:Characteristic]()
-        public convenience init(_ uuidString:String,characteristics:[Characteristic]? = nil) {
-            self.init(CBUUID(string: uuidString),characteristics:characteristics)
-        }
-        public init(_ uuid:CBUUID,characteristics:[Characteristic]? = nil) {
-            self.uuid = uuid
-            super.init()
-            self.characteristics = characteristics?.reduce([CBUUID:Characteristic](), { partialResult, characteristics in
-                var partialResult = partialResult
-                partialResult[characteristics.uuid] = characteristics
-                return partialResult
-            }) ?? [:]
-        }
-        public init(_ cbService:CBService) {
-            self.uuid = cbService.uuid
-            self._cbService = cbService
-            super.init()
-        }
-        func disconnect() {
-            for characteristic in self.characteristics.values {
-                characteristic.disconnect()
-            }
-            self._cbService = nil
-        }
-    }
-    public class Characteristic:NSObject {
-        public private(set) var uuid:CBUUID
-        weak var peripheral:IPaPeripheral?
-        weak var _cbCharacteristic:CBCharacteristic?
-        var valueSubject = PassthroughSubject<Data?,Never>()
-        public private(set) weak var cbCharacteristic:CBCharacteristic? {
-            get {
-                return _cbCharacteristic
-            }
-            set {
-                self._cbCharacteristic = newValue
-            }
-        }
-        public convenience init(_ uuidString:String) {
-            self.init(CBUUID(string: uuidString))
-        }
-        public init(_ uuid:CBUUID,cbCharacteristic:CBCharacteristic? = nil) {
-            self.uuid = uuid
-            self._cbCharacteristic = cbCharacteristic
-            super.init()
-        }
-        public init(_ cbCharacteristic:CBCharacteristic) {
-            self.uuid = cbCharacteristic.uuid
-            self._cbCharacteristic = cbCharacteristic
-            super.init()
-        }
-        public func setNotify(_ enable:Bool) {
-            guard let peripheral = peripheral?.peripheral,let cbCharacteristic = cbCharacteristic  else {
-                return
-            }
-            peripheral.setNotifyValue(enable, for: cbCharacteristic)
-        }
-        public func readValue() {
-            guard let peripheral = peripheral?.peripheral,let cbCharacteristic = cbCharacteristic  else {
-                return
-            }
-            peripheral.readValue(for: cbCharacteristic)
-        }
-        public func writeValue(_ data:Data,type:CBCharacteristicWriteType) {
-            guard let peripheral = peripheral?.peripheral,let cbCharacteristic = cbCharacteristic  else {
-                return
-            }
-            peripheral.writeValue(data, for: cbCharacteristic, type: type)
-        }
-        func disconnect() {
-            self._cbCharacteristic = nil
-        }
-    }
     @objc class open func keyPathsForValuesAffectingRssi() -> Set<String> {
         return ["_rssi"]
     }
@@ -132,8 +42,8 @@ open class IPaPeripheral: NSObject {
             return self.peripheral?.state ?? .disconnected
         }
     }
-    lazy var _services:[CBUUID:Service] = [:]
-    public var services:[Service] {
+    lazy var _services:[CBUUID:IPaCBService] = [:]
+    public var services:[IPaCBService] {
         get {
             return Array(self._services.values)
         }
@@ -152,13 +62,13 @@ open class IPaPeripheral: NSObject {
     public override init() {
         
         super.init()
-        self._services = self.generateServices().reduce([CBUUID:Service](), { partialResult, service in
+        self._services = self.generateServices().reduce([CBUUID:IPaCBService](), { partialResult, service in
             var partialResult = partialResult
             partialResult[service.uuid] = service
             return partialResult
         })
     }
-    open func generateServices() -> [Service] {
+    open func generateServices() -> [IPaCBService] {
         return []
     }
     func scanService() {
@@ -181,11 +91,10 @@ open class IPaPeripheral: NSObject {
         }
         self.manager.centralManager.cancelPeripheralConnection(peripheral)
     }
-
     open func didSet(peripheral:CBPeripheral) {
         
     }
-    @inlinable open func didDiscover(characteristic:Characteristic) {
+    @inlinable open func didDiscover(characteristic:IPaCBCharacteristic) {
         
     }
 
@@ -195,11 +104,11 @@ open class IPaPeripheral: NSObject {
     @inlinable public func writeValue(_ data:Data,for descriptor:CBDescriptor) {
         self.peripheral?.writeValue(data, for: descriptor)
     }
-    public func bind(with characteristic:Characteristic,onDataUpdate callback:@escaping (Data?)->()) {
+    public func bind(with characteristic:IPaCBCharacteristic,onDataUpdate callback:@escaping (Data?)->()) {
         let anyCancellable = characteristic.valueSubject.sink(receiveValue: callback)
         self.characteristicsAnyCancellable.append(anyCancellable)
     }
-    public func bind<Root>(_ keyPath:ReferenceWritableKeyPath<Root,String?>,to characteristic:Characteristic)  {
+    public func bind<Root>(_ keyPath:ReferenceWritableKeyPath<Root,String?>,to characteristic:IPaCBCharacteristic)  {
         let anyCancellable = characteristic.valueSubject.map { data -> String? in
             guard let data = data else {
                 return nil
@@ -208,7 +117,7 @@ open class IPaPeripheral: NSObject {
         }.assign(to: keyPath, on: self as! Root)
         self.characteristicsAnyCancellable.append(anyCancellable)
     }
-    public func bind<PropertyType,T,Root>(_ keyPath:ReferenceWritableKeyPath<Root,PropertyType?>,to characteristic:Characteristic,transform:@escaping ((T) -> PropertyType))  {
+    public func bind<PropertyType,T,Root>(_ keyPath:ReferenceWritableKeyPath<Root,PropertyType?>,to characteristic:IPaCBCharacteristic,transform:@escaping ((T) -> PropertyType))  {
         let anyCancellable = characteristic.valueSubject.map { data -> PropertyType? in
             guard let data = data else {
                 return nil
@@ -225,7 +134,7 @@ open class IPaPeripheral: NSObject {
         self.characteristicsAnyCancellable.append(anyCancellable)
         
     }
-    public func bind<T,Root>(_ keyPath:ReferenceWritableKeyPath<Root,T?>,to characteristic:Characteristic)  {
+    public func bind<T,Root>(_ keyPath:ReferenceWritableKeyPath<Root,T?>,to characteristic:IPaCBCharacteristic)  {
         self.bind(keyPath, to: characteristic, transform: {return $0 })
     }
     fileprivate func updateCharacteristicValue(_ characteristic:CBCharacteristic) {
@@ -251,7 +160,7 @@ extension IPaPeripheral:CBPeripheralDelegate {
                 peripheral.discoverCharacteristics(uuids.count > 0 ? uuids : nil , for: service)
             }
             else {
-                self._services[service.uuid] = Service(service)
+                self._services[service.uuid] = IPaCBService(service)
                 peripheral.discoverCharacteristics(nil, for: service)
             }
             
@@ -272,6 +181,12 @@ extension IPaPeripheral:CBPeripheralDelegate {
     }
     public func peripheral(_ peripheral: CBPeripheral, didWriteValueFor characteristic: CBCharacteristic, error: Error?) {
         IPaLog("IPaPeripheral - did write value for characteristic: \(characteristic.description)")
+        
+        guard let cbService = characteristic.service,let service = self._services[cbService.uuid],let ipaCharacteristic = service.characteristics[characteristic.uuid] else {
+            return
+        }
+        ipaCharacteristic.didWriteValueSubject.send(error)
+        
     }
     public func peripheral(_ peripheral: CBPeripheral, didWriteValueFor descriptor: CBDescriptor, error: Error?) {
         IPaLog("IPaPeripheral - did write value for descriptor: \(descriptor.description)")
@@ -295,16 +210,16 @@ extension IPaPeripheral:CBPeripheralDelegate {
         }
         IPaLog("IPaPeripheral - Discovered characteristic: \(characteristics)")
         for characteristic in characteristics {
-            var ipaCharacteristic:Characteristic
+            var ipaCharacteristic:IPaCBCharacteristic
             if let _ipaCharacteristic = ipaService.characteristics[characteristic.uuid]  {
                 _ipaCharacteristic._cbCharacteristic = characteristic
                 ipaCharacteristic = _ipaCharacteristic
             }
             else {
-                ipaCharacteristic = Characteristic(characteristic)
+                ipaCharacteristic = IPaCBCharacteristic(characteristic)
                 ipaService.characteristics[characteristic.uuid] = ipaCharacteristic
             }
-            ipaCharacteristic.peripheral = self
+            ipaCharacteristic._peripheral = self
             self.didDiscover(characteristic: ipaCharacteristic)
             peripheral.discoverDescriptors(for: characteristic)
         }
