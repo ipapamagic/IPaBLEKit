@@ -86,7 +86,11 @@ public class IPaBluetoothManager: NSObject {
         self.scanTimer = nil
         self.centralManager.stopScan()
     }
-    
+    @inlinable func getPeripheral(_ cbPeripheral:CBPeripheral) -> IPaPeripheral? {
+        return self.peripherals.first(where: { _peripheral in
+            _peripheral.peripheral?.identifier == cbPeripheral.identifier
+        })
+    }
 }
 extension IPaBluetoothManager:CBCentralManagerDelegate {
     public func centralManagerDidUpdateState(_ central: CBCentralManager) {
@@ -97,11 +101,10 @@ extension IPaBluetoothManager:CBCentralManagerDelegate {
         guard let name = peripheral.name,name.count > 0 else {
             return
         }
-        if let ipaPeripheral = self.peripherals.first(where: { _peripheral in
-            _peripheral.peripheral == peripheral
-        }) {
+        if let ipaPeripheral = self.getPeripheral(peripheral) {
             IPaLog("Peripheral discovered updated:\(peripheral.name ?? peripheral.description)")
             ipaPeripheral._rssi = RSSI
+            ipaPeripheral._peripheral = peripheral
             ipaPeripheral.lastDiscoverTime = Date().timeIntervalSince1970
         }
         else if let ipaPeripheral = self.delegate.createPeripheral(from: self, with: peripheral, advertisementData: advertisementData, rssi: RSSI) {
@@ -116,27 +119,21 @@ extension IPaBluetoothManager:CBCentralManagerDelegate {
     }
     public func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
         IPaLog("Peripheral connected:\(peripheral.name ?? peripheral.description)")
-        if let ipaPeripheral = self.peripherals.first(where: { ipaPeripheral in
-            return ipaPeripheral.peripheral == peripheral
-        }) {
+        if let ipaPeripheral = self.getPeripheral(peripheral) {
             self.delegate.manager(self, didConnect: ipaPeripheral)
             ipaPeripheral.scanService()
         }
     }
     public func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
         IPaLog("Peripheral fail to connect:\(peripheral.name ?? peripheral.description),error:\(error?.localizedDescription ?? "nil")")
-        if let ipaPeripheral = self.peripherals.first(where: { ipaPeripheral in
-            return ipaPeripheral.peripheral == peripheral
-        }) {
+        if let ipaPeripheral = self.getPeripheral(peripheral) {
             self.delegate.manager(self, didFailToConnect: ipaPeripheral,error:error)
             
         }
     }
     public func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
         IPaLog("Peripheral disconnect:\(peripheral.name ?? peripheral.description),error:\(error?.localizedDescription ?? "nil")")
-        if let ipaPeripheral = self.peripherals.first(where: { ipaPeripheral in
-            return ipaPeripheral.peripheral == peripheral
-        }) {
+        if let ipaPeripheral = self.getPeripheral(peripheral) {
             self.delegate.manager(self, didDisconnectPeripheral: ipaPeripheral,error:error)
         }
     }
