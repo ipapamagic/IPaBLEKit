@@ -143,6 +143,9 @@ open class IPaPeripheral: NSObject {
         }
         ipaCharacteristic.valueSubject.send(characteristic.value)
     }
+    open func onDisconnected(_ error:Error?) {
+        
+    }
 }
 
 extension IPaPeripheral:CBPeripheralDelegate {

@@ -135,6 +135,7 @@ extension IPaBluetoothManager:CBCentralManagerDelegate {
         IPaLog("Peripheral disconnect:\(peripheral.name ?? peripheral.description),error:\(error?.localizedDescription ?? "nil")")
         if let ipaPeripheral = self.getPeripheral(peripheral) {
             self.delegate.manager(self, didDisconnectPeripheral: ipaPeripheral,error:error)
+            ipaPeripheral.onDisconnected(error)
         }
     }
 }
