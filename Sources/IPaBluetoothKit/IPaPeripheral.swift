@@ -183,7 +183,7 @@ extension IPaPeripheral:CBPeripheralDelegate {
                 
     }
     public func peripheral(_ peripheral: CBPeripheral, didWriteValueFor characteristic: CBCharacteristic, error: Error?) {
-        IPaLog("IPaPeripheral - did write value for characteristic: \(characteristic.description)")
+//        IPaLog("IPaPeripheral - did write value for characteristic: \(characteristic.description)")
         
         guard let cbService = characteristic.service,let service = self._services[cbService.uuid],let ipaCharacteristic = service.characteristics[characteristic.uuid] else {
             return
