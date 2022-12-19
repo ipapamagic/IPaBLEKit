@@ -53,7 +53,7 @@ public class IPaCBCharacteristic:NSObject {
         }
         peripheral.readValue(for: cbCharacteristic)
     }
-    @inlinable public func writeValuesWithChecksum(_ values:[UInt8],type:CBCharacteristicWriteType) throws{
+    @inlinable public func writeValuesWithChecksum(_ values:[UInt8],type:CBCharacteristicWriteType) throws -> Bool {
         var checksum:UInt8 = 0
         var data = Data()
         for value in values {
@@ -61,13 +61,14 @@ public class IPaCBCharacteristic:NSObject {
             checksum += value
         }
         data.append(checksum)
-        self.writeValue(data, type: type)
+        return self.writeValue(data, type: type)
     }
-    @inlinable public func writeValue(_ data:Data,type:CBCharacteristicWriteType) {
+    @inlinable public func writeValue(_ data:Data,type:CBCharacteristicWriteType) -> Bool {
         guard let peripheral = peripheral?.peripheral,let cbCharacteristic = cbCharacteristic  else {
-            return
+            return false
         }
         peripheral.writeValue(data, for: cbCharacteristic, type: type)
+        return true
     }
     
     func disconnect() {
