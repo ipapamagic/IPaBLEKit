@@ -63,7 +63,8 @@ public class IPaCBCharacteristic:NSObject {
         data.append(checksum)
         return self.writeValue(data, type: type)
     }
-    @inlinable public func writeValue(_ data:Data,type:CBCharacteristicWriteType) -> Bool {
+    
+    @discardableResult @inlinable public func writeValue(_ data:Data,type:CBCharacteristicWriteType) -> Bool {
         guard let peripheral = peripheral?.peripheral,let cbCharacteristic = cbCharacteristic  else {
             return false
         }
