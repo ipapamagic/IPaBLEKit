@@ -20,6 +20,8 @@ open class IPaPeripheral: NSObject {
         return ["_peripheral"]
     }
     var characteristicsAnyCancellable = [AnyCancellable]()
+    var didConnectPassthroughSubject = PassthroughSubject<Error?, Never>()
+    var connectCancellable:AnyCancellable?
     @objc dynamic var _peripheral:CBPeripheral? {
         didSet {
             guard let _peripheral = _peripheral else {
@@ -71,18 +73,48 @@ open class IPaPeripheral: NSObject {
     open func generateServices() -> [IPaCBService] {
         return []
     }
-    func scanService() {
+    private func scanService() {
         let servicesUUIDs = Array(self._services.keys)
         
         self.peripheral?.discoverServices(servicesUUIDs.count > 0 ? servicesUUIDs : nil)
+        
+        
+        
     }
-    public func connect() {
-        guard let peripheral = peripheral else {
+    func onBLEConnected() {
+        guard !self.services.isEmpty else {
+            self.didConnectPassthroughSubject.send(nil)
             return
         }
-        self.manager.centralManager.connect(peripheral)
+        var allCharacteristics = 0
+        for service in self.services {
+            allCharacteristics += service.characteristics.count
+        }
+        guard allCharacteristics > 0 else {
+            self.didConnectPassthroughSubject.send(nil)
+            return
+        }
+        self.scanService()
+        
     }
-    public func disconnect() {
+    open func connect() async -> Bool {
+        guard let peripheral = peripheral else {
+            return true
+        }
+        
+        return await withCheckedContinuation {
+            continuation in
+            
+            self.connectCancellable = self.didConnectPassthroughSubject.sink { error in
+                
+                continuation.resume(returning: error == nil)
+                self.connectCancellable?.cancel()
+                self.connectCancellable = nil
+            }
+            self.manager.centralManager.connect(peripheral)
+        }
+    }
+    open func disconnect() {
         guard let peripheral = peripheral else {
             return
         }
@@ -94,10 +126,24 @@ open class IPaPeripheral: NSObject {
     open func didSet(peripheral:CBPeripheral) {
         
     }
-    @inlinable open func didDiscover(characteristic:IPaCBCharacteristic) {
+    func didDiscover(characteristic:IPaCBCharacteristic) {
         
     }
-
+   
+    func didDiscoverDescriptors(for characteristic:IPaCBCharacteristic) {
+        for service in self.services {
+            for characteristic in service.characteristics.values {
+                guard let cbCharacteristic = characteristic.cbCharacteristic,let _ = cbCharacteristic.descriptors else {
+                    return
+                }
+            }
+        }
+        
+        self.didConnectPassthroughSubject.send(nil)
+    }
+    @inlinable public func writeValue(_ data:Data,for characteristic:CBCharacteristic,timeout:TimeInterval) {
+        
+    }
     @inlinable public func writeValue(_ data:Data,for characteristic:CBCharacteristic,type:CBCharacteristicWriteType = .withResponse) {
         self.peripheral?.writeValue(data, for: characteristic, type: type)
     }
@@ -170,6 +216,9 @@ extension IPaPeripheral:CBPeripheralDelegate {
             
         }
     }
+    public func peripheral(_ peripheral: CBPeripheral, didReadRSSI RSSI: NSNumber, error: (any Error)?) {
+        self._rssi = RSSI
+    }
     public func peripheral(_ peripheral: CBPeripheral, didDiscoverDescriptorsFor characteristic: CBCharacteristic, error: Error?) {
         guard error == nil else {
             IPaLog ("\(error.debugDescription)")
@@ -180,7 +229,12 @@ extension IPaPeripheral:CBPeripheralDelegate {
                 IPaLog("IPaPeripheral - did discover descript\(descript.description)")
             }
         }
-                
+        guard let cbService = characteristic.service,let service = self._services[cbService.uuid],let ipaCharacteristic = service.characteristics[characteristic.uuid] else {
+            
+            return
+        }
+        self.didDiscoverDescriptors(for: ipaCharacteristic)
+        
     }
     public func peripheral(_ peripheral: CBPeripheral, didWriteValueFor characteristic: CBCharacteristic, error: Error?) {
 //        IPaLog("IPaPeripheral - did write value for characteristic: \(characteristic.description)")
@@ -188,7 +242,12 @@ extension IPaPeripheral:CBPeripheralDelegate {
         guard let cbService = characteristic.service,let service = self._services[cbService.uuid],let ipaCharacteristic = service.characteristics[characteristic.uuid] else {
             return
         }
-        ipaCharacteristic.didWriteValueSubject.send(error)
+        if let error = error {
+            ipaCharacteristic.didWriteValueSubject.send(.failure(.error(error: error)))
+        }
+        else {
+            ipaCharacteristic.didWriteValueSubject.send(.success( ipaCharacteristic._cbCharacteristic?.value))
+        }
         
     }
     public func peripheral(_ peripheral: CBPeripheral, didWriteValueFor descriptor: CBDescriptor, error: Error?) {
@@ -198,7 +257,15 @@ extension IPaPeripheral:CBPeripheralDelegate {
         self.updateCharacteristicValue(characteristic)
     }
     open func peripheral(_ peripheral: CBPeripheral, didUpdateNotificationStateFor characteristic: CBCharacteristic, error: Error?) {
-        self.updateCharacteristicValue(characteristic)
+        guard let cbService = characteristic.service,let service = self._services[cbService.uuid],let ipaCharacteristic = service.characteristics[characteristic.uuid] else {
+            return
+        }
+        if let error = error {
+            ipaCharacteristic.didUpdateNotifySubject.send(.failure(.error(error: error)))
+        }
+        else {
+            ipaCharacteristic.didUpdateNotifySubject.send(.success(()))
+        }
     }
     open func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor descriptor: CBDescriptor, error: Error?) {
         

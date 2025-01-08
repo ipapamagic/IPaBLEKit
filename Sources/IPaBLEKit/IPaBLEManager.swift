@@ -10,18 +10,26 @@ import CoreBluetooth
 import IPaLog
 import Combine
 public protocol IPaBLEManagerDelegate {
-    func createPeripheral(from manager: IPaBLEManager, with peripheral: CBPeripheral, advertisementData: [String : Any], rssi RSSI: NSNumber) -> IPaPeripheral?
+    func createPeripheral(from manager: IPaBLEManager, with peripheral: CBPeripheral, advertisementData: [String : Any]?, rssi RSSI: NSNumber?) -> IPaPeripheral?
+    func peripheral(_ ipaPeripheral:IPaPeripheral,isEqualTo peripheral:CBPeripheral,with advertisementData: [String : Any]) -> Bool
+    func restorePeripheral(from manager: IPaBLEManager, with peripheral: CBPeripheral) -> IPaPeripheral?
+    
     func manager(_ manager: IPaBLEManager, didDiscover peripheral:IPaPeripheral)
+    func manager(_ manager: IPaBLEManager, willRestore peripheral:IPaPeripheral)
     func manager(_ manager: IPaBLEManager, didConnect peripheral:IPaPeripheral)
     func manager(_ manager: IPaBLEManager, didFailToConnect peripheral:IPaPeripheral, error: Error?)
     func manager(_ manager: IPaBLEManager, didDisconnectPeripheral peripheral:IPaPeripheral, error: Error?)
 }
 public class IPaBLEManager: NSObject {
-    lazy var centralManager = CBCentralManager(delegate: self, queue: .main)
+    var centralManager:CBCentralManager!
+    
     public var cbStateSubject = PassthroughSubject<CBManagerState,Never>()
     var scanTimer:Timer?
     var scanOptions:[String : Any]?
-    public var rescanTime:TimeInterval = 10 {
+    public var isScanning:Bool {
+        return scanTimer != nil
+    }
+    public var rescanTime:TimeInterval = 5 {
         didSet {
             guard let _ = scanTimer else {
                 return
@@ -30,6 +38,7 @@ public class IPaBLEManager: NSObject {
         }
     }
     public var peripheralTimeoutInterval:TimeInterval = 10
+    
     @objc dynamic public private(set) var peripherals = [IPaPeripheral]()
     var services:[CBUUID]?
     public var cbState:CBManagerState {
@@ -38,12 +47,14 @@ public class IPaBLEManager: NSObject {
         }
     }
     public var delegate:IPaBLEManagerDelegate
-    public init(_ services:[String]? = nil,delegate:IPaBLEManagerDelegate) {
+    public init(_ services:[String]? = nil,queue:dispatch_queue_t = .main ,options:[String:Any]? = nil,delegate:IPaBLEManagerDelegate) {
+        
         self.services = services?.map({ uuid in
             return CBUUID(string: uuid)
         })
         self.delegate = delegate
         super.init()
+        self.centralManager = CBCentralManager(delegate: self, queue: queue,options:options)
     }
     public func startScan(_ options:[String:Any]? = nil) {
         peripherals.removeAll()
@@ -86,13 +97,41 @@ public class IPaBLEManager: NSObject {
         self.scanTimer = nil
         self.centralManager.stopScan()
     }
-    @inlinable func getPeripheral(_ cbPeripheral:CBPeripheral) -> IPaPeripheral? {
+    @inlinable func getPeripheral(_ cbPeripheral:CBPeripheral,advertisementData:[String:Any]? = nil) -> IPaPeripheral? {
         return self.peripherals.first(where: { _peripheral in
-            _peripheral.peripheral?.identifier == cbPeripheral.identifier
+            if _peripheral.peripheral?.identifier == cbPeripheral.identifier {
+                return true
+            }
+            if let advertisementData = advertisementData {
+                return self.delegate.peripheral(_peripheral, isEqualTo: cbPeripheral, with: advertisementData)
+            }
+            return false
         })
     }
 }
 extension IPaBLEManager:CBCentralManagerDelegate {
+    public func centralManager(_ central: CBCentralManager, willRestoreState dict: [String : Any]) {
+        if let peripherals = dict[CBCentralManagerRestoredStatePeripheralsKey] as? [CBPeripheral] {
+            for peripheral in peripherals {
+                IPaLog("Peripheral willRestoreState:\(peripheral.name ?? peripheral.description)")
+                
+                if let ipaPeripheral = self.getPeripheral(peripheral) {
+                    ipaPeripheral._peripheral = peripheral
+                    ipaPeripheral.lastDiscoverTime = Date().timeIntervalSince1970
+                    self.delegate.manager(self, willRestore: ipaPeripheral)
+                }
+                else if let ipaPeripheral = self.delegate.restorePeripheral(from: self, with: peripheral) {
+                    ipaPeripheral._peripheral = peripheral
+                    ipaPeripheral.manager = self
+                    
+                    self.peripherals.append(ipaPeripheral)
+                    self.delegate.manager(self, willRestore: ipaPeripheral)
+                }
+                
+                
+            }
+        }
+    }
     public func centralManagerDidUpdateState(_ central: CBCentralManager) {
         self.cbStateSubject.send(central.state)
         
@@ -101,18 +140,20 @@ extension IPaBLEManager:CBCentralManagerDelegate {
         guard let name = peripheral.name,name.count > 0 else {
             return
         }
-        if let ipaPeripheral = self.getPeripheral(peripheral) {
-            IPaLog("Peripheral discovered updated:\(peripheral.name ?? peripheral.description)")
+        IPaLog("Peripheral discovered updated:\(peripheral.name ?? peripheral.description)")
+        if let ipaPeripheral = self.getPeripheral(peripheral,advertisementData: advertisementData) {
             ipaPeripheral._rssi = RSSI
-            ipaPeripheral._peripheral = peripheral
+            if ipaPeripheral.peripheral != peripheral {
+                ipaPeripheral._peripheral = peripheral
+            }
             ipaPeripheral.lastDiscoverTime = Date().timeIntervalSince1970
+            self.delegate.manager(self, didDiscover: ipaPeripheral)
         }
         else if let ipaPeripheral = self.delegate.createPeripheral(from: self, with: peripheral, advertisementData: advertisementData, rssi: RSSI) {
             ipaPeripheral._peripheral = peripheral
             ipaPeripheral.manager = self
             ipaPeripheral._rssi = RSSI
             self.peripherals.append(ipaPeripheral)
-            IPaLog("Peripheral Discovered:\(peripheral.name ?? peripheral.description)")
             ipaPeripheral.lastDiscoverTime = Date().timeIntervalSince1970
             self.delegate.manager(self, didDiscover: ipaPeripheral)
         }
@@ -120,8 +161,9 @@ extension IPaBLEManager:CBCentralManagerDelegate {
     public func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
         IPaLog("Peripheral connected:\(peripheral.name ?? peripheral.description)")
         if let ipaPeripheral = self.getPeripheral(peripheral) {
+            ipaPeripheral.onBLEConnected()
             self.delegate.manager(self, didConnect: ipaPeripheral)
-            ipaPeripheral.scanService()
+            
         }
     }
     public func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
