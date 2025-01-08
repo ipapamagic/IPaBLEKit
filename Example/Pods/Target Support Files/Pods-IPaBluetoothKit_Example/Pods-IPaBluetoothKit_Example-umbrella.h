@@ -11,6 +11,6 @@
 #endif
 
 
-FOUNDATION_EXPORT double Pods_IPaBluetoothKit_ExampleVersionNumber;
-FOUNDATION_EXPORT const unsigned char Pods_IPaBluetoothKit_ExampleVersionString[];
+FOUNDATION_EXPORT double Pods_IPaBLEKit_ExampleVersionNumber;
+FOUNDATION_EXPORT const unsigned char Pods_IPaBLEKit_ExampleVersionString[];
 

@@ -1,5 +1,5 @@
 import XCTest
-import IPaBluetoothKit
+import IPaBLEKit
 
 class Tests: XCTestCase {
     

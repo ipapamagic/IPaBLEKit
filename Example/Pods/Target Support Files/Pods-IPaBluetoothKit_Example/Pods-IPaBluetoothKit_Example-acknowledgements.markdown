@@ -1,7 +1,7 @@
 # Acknowledgements
 This application makes use of the following third party libraries:
 
-## IPaBluetoothKit
+## IPaBLEKit
 
 Copyright (c) 2022 IPaPa <ipapamagic@gmail.com>
 

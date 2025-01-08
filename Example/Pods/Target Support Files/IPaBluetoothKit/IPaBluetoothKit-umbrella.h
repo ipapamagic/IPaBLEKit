@@ -11,6 +11,6 @@
 #endif
 
 
-FOUNDATION_EXPORT double IPaBluetoothKitVersionNumber;
-FOUNDATION_EXPORT const unsigned char IPaBluetoothKitVersionString[];
+FOUNDATION_EXPORT double IPaBLEKitVersionNumber;
+FOUNDATION_EXPORT const unsigned char IPaBLEKitVersionString[];
 

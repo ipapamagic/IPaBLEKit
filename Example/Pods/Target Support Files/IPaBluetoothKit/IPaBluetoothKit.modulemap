@@ -1,5 +1,5 @@
-framework module IPaBluetoothKit {
-  umbrella header "IPaBluetoothKit-umbrella.h"
+framework module IPaBLEKit {
+  umbrella header "IPaBLEKit-umbrella.h"
 
   export *
   module * { export * }

@@ -1,6 +1,6 @@
 //
-//  IPaBluetoothManager.swift
-//  IPaBluetoothKit
+//  IPaBLEManager.swift
+//  IPaBLEKit
 //
 //  Created by IPa Chen on 2022/6/8.
 //
@@ -9,14 +9,14 @@ import UIKit
 import CoreBluetooth
 import IPaLog
 import Combine
-public protocol IPaBluetoothManagerDelegate {
-    func createPeripheral(from manager: IPaBluetoothManager, with peripheral: CBPeripheral, advertisementData: [String : Any], rssi RSSI: NSNumber) -> IPaPeripheral?
-    func manager(_ manager: IPaBluetoothManager, didDiscover peripheral:IPaPeripheral)
-    func manager(_ manager: IPaBluetoothManager, didConnect peripheral:IPaPeripheral)
-    func manager(_ manager: IPaBluetoothManager, didFailToConnect peripheral:IPaPeripheral, error: Error?)
-    func manager(_ manager: IPaBluetoothManager, didDisconnectPeripheral peripheral:IPaPeripheral, error: Error?)
+public protocol IPaBLEManagerDelegate {
+    func createPeripheral(from manager: IPaBLEManager, with peripheral: CBPeripheral, advertisementData: [String : Any], rssi RSSI: NSNumber) -> IPaPeripheral?
+    func manager(_ manager: IPaBLEManager, didDiscover peripheral:IPaPeripheral)
+    func manager(_ manager: IPaBLEManager, didConnect peripheral:IPaPeripheral)
+    func manager(_ manager: IPaBLEManager, didFailToConnect peripheral:IPaPeripheral, error: Error?)
+    func manager(_ manager: IPaBLEManager, didDisconnectPeripheral peripheral:IPaPeripheral, error: Error?)
 }
-public class IPaBluetoothManager: NSObject {
+public class IPaBLEManager: NSObject {
     lazy var centralManager = CBCentralManager(delegate: self, queue: .main)
     public var cbStateSubject = PassthroughSubject<CBManagerState,Never>()
     var scanTimer:Timer?
@@ -37,8 +37,8 @@ public class IPaBluetoothManager: NSObject {
             return self.centralManager.state
         }
     }
-    public var delegate:IPaBluetoothManagerDelegate
-    public init(_ services:[String]? = nil,delegate:IPaBluetoothManagerDelegate) {
+    public var delegate:IPaBLEManagerDelegate
+    public init(_ services:[String]? = nil,delegate:IPaBLEManagerDelegate) {
         self.services = services?.map({ uuid in
             return CBUUID(string: uuid)
         })
@@ -92,7 +92,7 @@ public class IPaBluetoothManager: NSObject {
         })
     }
 }
-extension IPaBluetoothManager:CBCentralManagerDelegate {
+extension IPaBLEManager:CBCentralManagerDelegate {
     public func centralManagerDidUpdateState(_ central: CBCentralManager) {
         self.cbStateSubject.send(central.state)
         

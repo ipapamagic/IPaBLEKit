@@ -2,10 +2,10 @@ use_frameworks!
 
 platform :ios, '9.0'
 
-target 'IPaBluetoothKit_Example' do
-  pod 'IPaBluetoothKit', :path => '../'
+target 'IPaBLEKit_Example' do
+  pod 'IPaBLEKit', :path => '../'
 
-  target 'IPaBluetoothKit_Tests' do
+  target 'IPaBLEKit_Tests' do
     inherit! :search_paths
 
     

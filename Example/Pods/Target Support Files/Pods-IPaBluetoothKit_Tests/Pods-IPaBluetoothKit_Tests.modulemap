@@ -1,5 +1,5 @@
-framework module Pods_IPaBluetoothKit_Tests {
-  umbrella header "Pods-IPaBluetoothKit_Tests-umbrella.h"
+framework module Pods_IPaBLEKit_Tests {
+  umbrella header "Pods-IPaBLEKit_Tests-umbrella.h"
 
   export *
   module * { export * }

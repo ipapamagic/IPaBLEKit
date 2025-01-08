@@ -4,13 +4,13 @@
 import PackageDescription
 
 let package = Package(
-    name: "IPaBluetoothKit",
+    name: "IPaBLEKit",
     platforms: [.iOS(.v13)],
     products: [
         // Products define the executables and libraries a package produces, and make them visible to other packages.
         .library(
-            name: "IPaBluetoothKit",
-            targets: ["IPaBluetoothKit"]),
+            name: "IPaBLEKit",
+            targets: ["IPaBLEKit"]),
     ],
     dependencies: [
         .package(url: "https://github.com/ipapamagic/IPaLog.git", from: "3.1.0"),
@@ -21,10 +21,10 @@ let package = Package(
         // Targets are the basic building blocks of a package. A target can define a module or a test suite.
         // Targets can depend on other targets in this package, and on products in packages this package depends on.
         .target(
-            name: "IPaBluetoothKit",
+            name: "IPaBLEKit",
             dependencies: [.product(name: "IPaLog", package: "IPaLog")]),
         .testTarget(
-            name: "IPaBluetoothKitTests",
-            dependencies: ["IPaBluetoothKit"]),
+            name: "IPaBLEKitTests",
+            dependencies: ["IPaBLEKit"]),
     ]
 )

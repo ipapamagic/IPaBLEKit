@@ -1,6 +1,6 @@
 //
 //  IPaCBCharacteristic.swift
-//  IPaBluetoothKit
+//  IPaBLEKit
 //
 //  Created by IPa Chen on 2022/7/22.
 //

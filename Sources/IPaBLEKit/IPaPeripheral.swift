@@ -1,6 +1,6 @@
 //
 //  IPaPeripheral.swift
-//  IPaBluetoothKit
+//  IPaBLEKit
 //
 //  Created by IPa Chen on 2022/6/8.
 //
@@ -48,7 +48,7 @@ open class IPaPeripheral: NSObject {
             return Array(self._services.values)
         }
     }
-    weak var manager:IPaBluetoothManager!
+    weak var manager:IPaBLEManager!
 
     @inlinable public var peripheralName:String {
         return self.peripheral?.name ?? ""

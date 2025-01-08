@@ -1,5 +1,5 @@
 #import <Foundation/Foundation.h>
-@interface PodsDummy_IPaBluetoothKit : NSObject
+@interface PodsDummy_IPaBLEKit : NSObject
 @end
-@implementation PodsDummy_IPaBluetoothKit
+@implementation PodsDummy_IPaBLEKit
 @end

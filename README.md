@@ -1,9 +1,9 @@
-# IPaBluetoothKit
+# IPaBLEKit
 
-[![CI Status](https://img.shields.io/travis/IPaPa/IPaBluetoothKit.svg?style=flat)](https://travis-ci.org/IPaPa/IPaBluetoothKit)
-[![Version](https://img.shields.io/cocoapods/v/IPaBluetoothKit.svg?style=flat)](https://cocoapods.org/pods/IPaBluetoothKit)
-[![License](https://img.shields.io/cocoapods/l/IPaBluetoothKit.svg?style=flat)](https://cocoapods.org/pods/IPaBluetoothKit)
-[![Platform](https://img.shields.io/cocoapods/p/IPaBluetoothKit.svg?style=flat)](https://cocoapods.org/pods/IPaBluetoothKit)
+[![CI Status](https://img.shields.io/travis/IPaPa/IPaBLEKit.svg?style=flat)](https://travis-ci.org/IPaPa/IPaBLEKit)
+[![Version](https://img.shields.io/cocoapods/v/IPaBLEKit.svg?style=flat)](https://cocoapods.org/pods/IPaBLEKit)
+[![License](https://img.shields.io/cocoapods/l/IPaBLEKit.svg?style=flat)](https://cocoapods.org/pods/IPaBLEKit)
+[![Platform](https://img.shields.io/cocoapods/p/IPaBLEKit.svg?style=flat)](https://cocoapods.org/pods/IPaBLEKit)
 
 ## Example
 
@@ -13,11 +13,11 @@ To run the example project, clone the repo, and run `pod install` from the Examp
 
 ## Installation
 
-IPaBluetoothKit is available through [CocoaPods](https://cocoapods.org). To install
+IPaBLEKit is available through [CocoaPods](https://cocoapods.org). To install
 it, simply add the following line to your Podfile:
 
 ```ruby
-pod 'IPaBluetoothKit'
+pod 'IPaBLEKit'
 ```
 
 ## Author
@@ -26,4 +26,4 @@ IPaPa, ipapamagic@gmail.com
 
 ## License
 
-IPaBluetoothKit is available under the MIT license. See the LICENSE file for more info.
+IPaBLEKit is available under the MIT license. See the LICENSE file for more info.
