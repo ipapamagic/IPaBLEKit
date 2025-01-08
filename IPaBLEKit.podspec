@@ -8,8 +8,8 @@
 
 Pod::Spec.new do |s|
   s.name             = 'IPaBLEKit'
-  s.version          = '1.0.0'
-  s.summary          = 'A short description of IPaBLEKit.'
+  s.version          = '2.0.0'
+  s.summary          = 'A short description of IPaBLEKit.(original name: IPaBluetoothKit)'
 
 # This description is used to generate tags and improve search results.
 #   * Think: What does it do? Why did you write it? What is the focus?
